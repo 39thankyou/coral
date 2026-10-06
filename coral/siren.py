@@ -6,7 +6,7 @@ import torch
 from torch import nn
 import numpy as np
 
-#from coral.utils.interpolate import knn_interpolate_custom, rescale_coordinate
+# from coral.utils.interpolate import knn_interpolate_custom, rescale_coordinate
 
 
 class Sine(nn.Module):
@@ -279,15 +279,14 @@ class ModulatedSiren(Siren):
             if self.modulate_scale:
                 # Shape (batch_size, 1, dim_hidden). Note that we add 1 so
                 # modulations remain zero centered
-                scale = modulations[:, idx: idx +
-                                    self.dim_hidden].unsqueeze(1) + 1.0
+                scale = modulations[:, idx : idx + self.dim_hidden].unsqueeze(1) + 1.0
             else:
                 scale = 1.0
 
             if self.modulate_shift:
                 # Shape (batch_size, 1, dim_hidden)
                 shift = modulations[
-                    :, mid_idx + idx: mid_idx + idx + self.dim_hidden
+                    :, mid_idx + idx : mid_idx + idx + self.dim_hidden
                 ].unsqueeze(1)
             else:
                 shift = 0.0
@@ -330,8 +329,7 @@ class LatentToModulation(nn.Module):
             layers = [nn.Linear(latent_dim, dim_hidden), self.activation()]
             if num_layers > 2:
                 for i in range(num_layers - 2):
-                    layers += [nn.Linear(dim_hidden, dim_hidden),
-                               self.activation()]
+                    layers += [nn.Linear(dim_hidden, dim_hidden), self.activation()]
             layers += [nn.Linear(dim_hidden, num_modulations)]
             self.net = nn.Sequential(*layers)
 
@@ -525,14 +523,14 @@ class ConvModulatedSiren(Siren):
             if self.modulate_scale:
                 # Shape (batch_size, 1, dim_hidden). Note that we add 1 so
                 # modulations remain zero centered
-                scale = modulations[:, :, idx: idx + self.dim_hidden] + 1.0
+                scale = modulations[:, :, idx : idx + self.dim_hidden] + 1.0
             else:
                 scale = 1.0
 
             if self.modulate_shift:
                 # Shape (batch_size, 1, dim_hidden)
                 shift = modulations[
-                    :, :, mid_idx + idx: mid_idx + idx + self.dim_hidden
+                    :, :, mid_idx + idx : mid_idx + idx + self.dim_hidden
                 ]
             else:
                 shift = 0.0
@@ -652,8 +650,7 @@ class ConvModulatedSiren2(Siren):
         crds = []
         for i in range(dim_in):
             crds.append(torch.linspace(0.0, 1.0, grid_size))
-        self.modulation_grid = torch.stack(
-            torch.meshgrid(*crds, indexing="ij"), dim=-1)
+        self.modulation_grid = torch.stack(torch.meshgrid(*crds, indexing="ij"), dim=-1)
 
     def modulated_forward(self, x, latent):
         """Forward pass of modulated SIREN model.
@@ -681,8 +678,7 @@ class ConvModulatedSiren2(Siren):
         # print('toto', modulations.shape, latent.shape)
         modulations = torch.movedim(modulations, 1, -1)
 
-        modulations = modulations.view(
-            modulations.shape[0], -1, modulations.shape[-1])
+        modulations = modulations.view(modulations.shape[0], -1, modulations.shape[-1])
 
         mod_grid = self.modulation_grid.view(-1, x.shape[-1])
         mod_grid = (
@@ -699,8 +695,7 @@ class ConvModulatedSiren2(Siren):
             .cuda()
         )
         y_batch = (
-            torch.arange(x.shape[0]).view(-1, 1).repeat(1,
-                                                        x.shape[1]).flatten().cuda()
+            torch.arange(x.shape[0]).view(-1, 1).repeat(1, x.shape[1]).flatten().cuda()
         )
 
         # print('tototot')
@@ -718,8 +713,7 @@ class ConvModulatedSiren2(Siren):
             batch_y=y_batch,
         )
         if self.rescale_coordinate:
-            x = rescale_coordinate(
-                self.modulation_grid.cuda(), x.view(-1, x.shape[-1]))
+            x = rescale_coordinate(self.modulation_grid.cuda(), x.view(-1, x.shape[-1]))
 
         x = x.view(batch_size, -1, x.shape[-1])
         modulations = modulations.view(batch_size, -1, modulations.shape[-1])
@@ -736,14 +730,14 @@ class ConvModulatedSiren2(Siren):
             if self.modulate_scale:
                 # Shape (batch_size, 1, dim_hidden). Note that we add 1 so
                 # modulations remain zero centered
-                scale = modulations[:, :, idx: idx + self.dim_hidden] + 1.0
+                scale = modulations[:, :, idx : idx + self.dim_hidden] + 1.0
             else:
                 scale = 1.0
 
             if self.modulate_shift:
                 # Shape (batch_size, 1, dim_hidden)
                 shift = modulations[
-                    :, :, mid_idx + idx: mid_idx + idx + self.dim_hidden
+                    :, :, mid_idx + idx : mid_idx + idx + self.dim_hidden
                 ]
             else:
                 shift = 0.0
@@ -790,31 +784,34 @@ class SSN(nn.Module):
         self.w0 = w0
 
         layers = [nn.Linear(dim_in, dim_hidden)]
-        for j in range(self.num_layers-1):
+        for j in range(self.num_layers - 1):
             layers.append(nn.Linear(dim_hidden, dim_hidden))
         layers.append(nn.Linear(dim_hidden, dim_out))
         self.layers = nn.ModuleList(layers)
-        
+
         self.init_weights()
-                          
+
     def init_weights(self):
         for j, layer in enumerate(self.layers):
             if j == 0:
-                nn.init.normal(layer.weight, 0,  np.sqrt(2) / np.sqrt(layer.weight.shape[1]))
-                #nn.init.uniform(layer.weight, -self.w0 / layer.weight.shape[1], self.w0 / layer.weight.shape[1])
+                nn.init.normal(
+                    layer.weight, 0, np.sqrt(2) / np.sqrt(layer.weight.shape[1])
+                )
+                # nn.init.uniform(layer.weight, -self.w0 / layer.weight.shape[1], self.w0 / layer.weight.shape[1])
             else:
-                nn.init.normal(layer.weight, 0, np.sqrt(2) / np.sqrt(layer.weight.shape[1]))
+                nn.init.normal(
+                    layer.weight, 0, np.sqrt(2) / np.sqrt(layer.weight.shape[1])
+                )
             print(layer.weight.std())
-        
+
     def forward(self, x):
         for j, layer in enumerate(self.layers[:-1]):
             if j == 0:
-                x = torch.sin(self.w0*layer(x))
+                x = torch.sin(self.w0 * layer(x))
             else:
                 x = torch.sin(layer(x))
         out = self.layers[-1](x)
-        return out 
-
+        return out
 
 
 class ModulatedSSN(nn.Module):
@@ -847,41 +844,47 @@ class ModulatedSSN(nn.Module):
         self.dim_out = dim_out
         self.num_layers = num_layers
         self.w0 = w0
-        self.latent_dim = latent_dim    
+        self.latent_dim = latent_dim
 
         layers = [nn.Linear(dim_in, dim_hidden)]
-        for j in range(self.num_layers-1):
+        for j in range(self.num_layers - 1):
             layers.append(nn.Linear(dim_hidden, dim_hidden))
         layers.append(nn.Linear(dim_hidden, dim_out))
         self.layers = nn.ModuleList(layers)
-        self.num_modulations = dim_hidden * len(self.layers[:-1])    
+        self.num_modulations = dim_hidden * len(self.layers[:-1])
 
         self.modulation_net = LatentToModulation(
-                latent_dim,
-                self.num_modulations,
-                modulation_net_dim_hidden,
-                modulation_net_num_layers,
-            )
+            latent_dim,
+            self.num_modulations,
+            modulation_net_dim_hidden,
+            modulation_net_num_layers,
+        )
         self.init_weights()
-                          
+
     def init_weights(self):
         for j, layer in enumerate(self.layers):
             if j == 0:
-                nn.init.normal(layer.weight, 0,  np.sqrt(2) / np.sqrt(layer.weight.shape[1]))
-                #nn.init.uniform(layer.weight, -self.w0 / layer.weight.shape[1], self.w0 / layer.weight.shape[1])
+                nn.init.normal(
+                    layer.weight, 0, np.sqrt(2) / np.sqrt(layer.weight.shape[1])
+                )
+                # nn.init.uniform(layer.weight, -self.w0 / layer.weight.shape[1], self.w0 / layer.weight.shape[1])
             else:
-                nn.init.normal(layer.weight, 0, np.sqrt(2) / np.sqrt(layer.weight.shape[1]))
+                nn.init.normal(
+                    layer.weight, 0, np.sqrt(2) / np.sqrt(layer.weight.shape[1])
+                )
             print(layer.weight.std())
-        
+
     def modulated_forward(self, x, z):
         x_shape = x.shape[:-1]
         x = x.view(x.shape[0], -1, x.shape[-1])
         modulations = self.modulation_net(z)
-        modulations = modulations.reshape(-1, self.latent_dim, len(self.layers[:-1])).unsqueeze(1)
+        modulations = modulations.reshape(
+            -1, self.latent_dim, len(self.layers[:-1])
+        ).unsqueeze(1)
 
         for j, layer in enumerate(self.layers[:-1]):
             if j == 0:
-                x = torch.sin(self.w0*layer(x) + modulations[..., j])
+                x = torch.sin(self.w0 * layer(x) + modulations[..., j])
             else:
                 x = torch.sin(layer(x) + modulations[..., j])
         out = self.layers[-1](x)

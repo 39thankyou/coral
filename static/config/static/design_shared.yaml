@@ -1,0 +1,82 @@
+defaults:
+- _self_
+- data: null
+- optim: null
+- inr: null
+- wandb: null
+data:
+  dir: /data/serrano/deeponet-fourier-data
+  dataset_name: airfoil-flow
+  data_to_encode: null
+  ntrain: null
+  ntest: null
+  sub_tr: 1
+  sub_from: 1
+  sub_te: 1
+  seed: 123
+  same_grid: true
+  sequence_length: 20
+optim:
+  batch_size: 32
+  batch_size_val: null
+  lr_inr: 5.0e-06
+  gamma_step: 0.9
+  lr_code: 0.01
+  meta_lr_code: 5.0e-06
+  weight_decay_code: 0
+  inner_steps: 3
+  test_inner_steps: 3
+  epochs: 1000
+  lr_mlp: 0.001
+  weight_decay_mlp: 0
+inr_in:
+  model_type: siren
+  latent_dim: 128
+  depth: 4
+  hidden_dim: 256
+  w0: 10
+  use_latent: true
+  modulate_scale: false
+  modulate_shift: true
+  hypernet_depth: 1
+  hypernet_width: 128
+  last_activation: null
+  loss_type: mse
+inr_out:
+  model_type: siren
+  latent_dim: 128
+  depth: 4
+  hidden_dim: 256
+  w0: 30
+  use_latent: true
+  modulate_scale: false
+  modulate_shift: true
+  hypernet_depth: 1
+  hypernet_width: 128
+  last_activation: null
+  loss_type: mse
+model:
+  model_type: resnet
+  depth: 3
+  width: 128
+  dropout: 0
+  activation: swish
+inr:
+  inner_steps: 3
+  run_name: null
+  run_dict:
+    pressure: denim-frost-3448
+    density: fluent-planet-3586
+    vx: gallant-jazz-3402
+    vy: fresh-wave-3583
+wandb:
+  entity: 39thankyou-
+  project: coral
+  name: null
+  id: null
+  dir: null
+  sweep_id: null
+jz:
+  program: training/inr.py
+  mode: dev
+  partition: gpu_p2

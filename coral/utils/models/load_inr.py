@@ -16,6 +16,9 @@ NAME_TO_CLASS = {
 
 
 def create_inr_instance(cfg, input_dim=1, output_dim=1, device="cuda"):
+    if cfg.get("network_package") == "anchormix" or cfg.inr.model_type in ("anchormix", "siren_GridMix", "gridmix"):
+        from anchormix.factory import create_inr_instance as create_independent_inr
+        return create_independent_inr(cfg, input_dim, output_dim, device)
     device = torch.device(device)
     if cfg.inr.model_type == "siren":
         inr = ModulatedSiren(
@@ -114,7 +117,7 @@ def create_inr_instance(cfg, input_dim=1, output_dim=1, device="cuda"):
 
 def load_inr_model(
     run_dir, run_name, data_to_encode, input_dim=1, output_dim=1, device="cuda"
-):  
+):
     inr_train = torch.load(run_dir / f"{run_name}.pt")
 
     inr_state_dict = inr_train["inr"]

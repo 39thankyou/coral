@@ -1,0 +1,48 @@
+defaults:
+- _self_
+- data: null
+- optim: null
+- inr: null
+- wandb: null
+data:
+  dir: /data/serrano/deeponet-fourier-data
+  dataset_name: airfoil
+  data_to_encode: null
+  ntrain: null
+  ntest: null
+  sub_tr: 1
+  sub_from: 1
+  sub_te: 1
+  seed: 123
+  same_grid: true
+  sequence_length: 20
+optim:
+  batch_size: 64
+  batch_size_val: null
+  lr: 0.001
+  weight_decay: 0
+  gamma_step: 0.9
+  epochs: 1000
+  eval_every: 20
+model:
+  model_type: resnet
+  depth: 3
+  width: 64
+  dropout: 0
+  activation: swish
+inr:
+  inner_steps: 3
+  run_name: null
+  checkpoint: null
+  encode_batch_size: 4
+wandb:
+  entity: 39thankyou-
+  project: coral
+  name: null
+  id: null
+  dir: null
+  sweep_id: null
+jz:
+  program: training/inr.py
+  mode: dev
+  partition: gpu_p2

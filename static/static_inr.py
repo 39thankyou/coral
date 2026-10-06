@@ -144,7 +144,7 @@ def main(cfg: DictConfig) -> None:
         input_dim = 2
         output_dim = 3
         DatasetClass = CylinderFlowDataset
-    elif "airfoil-flow":
+    elif dataset_name == "airfoil-flow":
         DatasetClass = AirfoilFlowDataset
         input_dim = 2
         output_dim = 4

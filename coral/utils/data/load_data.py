@@ -13,11 +13,6 @@ import torch.nn.functional as F
 from scipy import io
 from torch.utils.data import Dataset
 
-# MP-PDE imports
-from equations.PDEs import CE
-from common.utils import HDF5Dataset
-from coral.utils.data.setting import init_setting
-
 # if dataset_name == "shallow-water":
 #    index = 0 if data_to_encode == "height" else 1
 #    x_train = x_train[..., index].unsqueeze(-1)
@@ -161,19 +156,19 @@ def get_operator_data(
     elif dataset_name == "pipe":
         min_sub = 1
         x_train, y_train, x_test, y_test = get_pipe(
-            data_dir, ntrain=1000, ntest=200, min_sub=min_sub
+            data_dir, ntrain=ntrain, ntest=ntest, min_sub=min_sub
         )
 
     elif dataset_name == "airfoil":
         min_sub = 1
         x_train, y_train, x_test, y_test = get_airfoil(
-            data_dir, ntrain=1000, ntest=200, min_sub=min_sub
+            data_dir, ntrain=ntrain, ntest=ntest, min_sub=min_sub
         )
 
     elif dataset_name == "elasticity":
         min_sub = 1
         x_train, y_train, x_test, y_test = get_elasticity(
-            data_dir, ntrain=1000, ntest=200, min_sub=min_sub
+            data_dir, ntrain=ntrain, ntest=ntest, min_sub=min_sub
         )
 
     elif dataset_name == "shallow-water":
@@ -343,16 +338,28 @@ def get_dynamics_data(
             data_dir / "ns_V1e-4_N10000_T30.mat")
 
     elif dataset_name == "navier-stokes-1e-5":
-        index_start = 9
-        u_train, u_test = get_navier_stokes_fno(
-            data_dir / "fno" / "NavierStokes_V1e-5_N1200_T20.mat", 1000, 200, sequence_length, index_start
+        filename = data_dir / "NavierStokes_V1e-5_N1200_T20.mat"
+        if not filename.exists():
+            filename = data_dir / "fno" / "NavierStokes_V1e-5_N1200_T20.mat"
+        u_train_full, u_test = get_navier_stokes_fno(
+            filename, ntrain=ntrain, ntest=ntest
+        )
+        total_seq = u_train_full.shape[-1]
+        u_train, u_eval_extrapolation, u_test = split_data(
+            u_train_full, u_test, seq_inter_len, seq_extra_len, total_seq
         )
 
     elif dataset_name == "navier-stokes-dino":
-        u_train, u_eval_extrapolation, u_test = get_navier_stokes_dino(data_dir, seq_inter_len, seq_extra_len)
+        u_train, u_eval_extrapolation, u_test = get_navier_stokes_dino(
+            data_dir,
+            seq_inter_len,
+            seq_extra_len,
+            ntrain=ntrain,
+            ntest=ntest,
+        )
 
     elif dataset_name == "shallow-water-dino":
-        u_train, u_eval_extrapolation, u_test = get_shallow_water_dino(data_dir, seq_inter_len, seq_extra_len)
+        u_train, u_eval_extrapolation, u_test = get_shallow_water_dino(data_dir, seq_inter_len, seq_extra_len, ntrain=ntrain, ntest=ntest)
 
     else:
         raise NotImplementedError
@@ -600,66 +607,26 @@ def get_pipe(filename, ntrain, ntest, min_sub=1):
 
     # Data is of the shape (number of samples = 2048, grid size = 2^13)
 
-    INPUT_X = os.path.join(filename, "../pipe/Pipe_X.npy")
-    INPUT_Y = os.path.join(filename, "../pipe/Pipe_Y.npy")
-    OUTPUT_Sigma = os.path.join(filename, "../pipe/Pipe_Q.npy")
-
-    N = ntrain + ntest
-    r1 = min_sub
-    r2 = min_sub
-    s1 = int(((129 - 1) / r1) + 1)
-    s2 = int(((129 - 1) / r2) + 1)
-
-    inputX = np.load(INPUT_X)
-    inputX = torch.tensor(inputX, dtype=torch.float)
-    inputY = np.load(INPUT_Y)
-    inputY = torch.tensor(inputY, dtype=torch.float)
-    # input = torch.stack([inputX, inputY], dim=-1)
-
-    output = np.load(OUTPUT_Sigma)[:, 0]
-    output = torch.tensor(output, dtype=torch.float)
-
-     # new
-    #xmax = torch.max(inputX[:ntrain])
-    #xmin = torch.min(inputX[:ntrain])
-    #inputX = inputX / 10
-    #inputX = (inputX - xmin) / (xmax - xmin)
-
-    #ymax = torch.max(inputY[:ntrain])
-    #ymin = torch.min(inputY[:ntrain])
-    #inputY = inputY / 10
-    #inputY = (inputY - ymin) / (ymax - ymin)
-    
-    # new
-    xmax = torch.max(inputX[:ntrain])
-    xmin = torch.min(inputX[:ntrain])
-    inputX = (inputX - xmin) / (xmax - xmin)
-
-    ymax = torch.max(inputY[:ntrain])
-    ymin = torch.min(inputY[:ntrain])
-    inputY = (inputY - ymin) / (ymax - ymin)
-
-    x = torch.cat([inputX.unsqueeze(-1), inputY.unsqueeze(-1)], axis=-1)
-    x_train = x[:N][:ntrain, ::r1, ::r2, :][:, :s1, :s2]
-    y_train = output[:N][:ntrain, ::r1, ::r2][:, :s1, :s2]
-    x_test = x[:N][-ntest:, ::r1, ::r2, :][:, :s1, :s2]
-    y_test = output[:N][-ntest:, ::r1, ::r2][:, :s1, :s2]
-
-    # old
-
-    #x_train = inputY[:N][:ntrain, ::r1, ::r2][:, :s1, :s2]
-    #y_train = output[:N][:ntrain, ::r1, ::r2][:, :s1, :s2]
-    #x_test = inputY[:N][-ntest:, ::r1, ::r2][:, :s1, :s2]
-    #y_test = output[:N][-ntest:, ::r1, ::r2][:, :s1, :s2]
-    # x_train = x_train.reshape(ntrain, s1, s2, 2)
-    # x_test = x_test.reshape(ntest, s1, s2, 2)
-
-    #xmax = torch.max(x_train)
-    #xmin = torch.min(x_train)
-    #x_train = (x_train - xmin) / (xmax - xmin)
-    #x_test = (x_test - xmin) / (xmax - xmin)
-
-    return x_train, y_train, x_test, y_test
+    filename = Path(filename)
+    if not (filename / "Pipe_X.npy").exists() and (filename.parent / "pipe" / "Pipe_X.npy").exists():
+        filename = filename.parent / "pipe"
+    train_size, test_size = 1000, 200
+    if not 1 <= ntrain <= train_size or not 1 <= ntest <= test_size:
+        raise ValueError("Requested samples exceed the official Pipe split")
+    xy = [np.load(filename / f"Pipe_{axis}.npy", mmap_mode="r") for axis in ("X", "Y")]
+    stress = np.load(filename / "Pipe_Q.npy", mmap_mode="r")
+    # Keep the author's full-training geometry normalization and fixed split.
+    def geometry(section):
+        channels = []
+        for array in xy:
+            low, high = float(array[:train_size].min()), float(array[:train_size].max())
+            channels.append((torch.from_numpy(np.array(array[section], dtype=np.float32)) - low) / (high-low))
+        return torch.stack(channels, dim=-1)[:, ::min_sub, ::min_sub]
+    train = slice(0, ntrain)
+    test = slice(train_size, train_size+ntest)
+    def output(section):
+        return torch.from_numpy(np.array(stress[section, 0], dtype=np.float32))[:, ::min_sub, ::min_sub]
+    return geometry(train), output(train), geometry(test), output(test)
 
 
 def get_airfoil(filename, ntrain, ntest, min_sub=1):
@@ -679,86 +646,92 @@ def get_airfoil(filename, ntrain, ntest, min_sub=1):
 
     # Data is of the shape (number of samples = 2048, grid size = 2^13)
 
-    INPUT_X = os.path.join(filename, "../airfoil/naca/NACA_Cylinder_X.npy")
-    INPUT_Y = os.path.join(filename, "../airfoil/naca/NACA_Cylinder_Y.npy")
-    OUTPUT_Sigma = os.path.join(
-        filename, "../airfoil/naca/NACA_Cylinder_Q.npy")
+    filename = Path(filename)
+    INPUT_X = filename / "naca" / "NACA_Cylinder_X.npy"
+    INPUT_Y = filename / "naca" / "NACA_Cylinder_Y.npy"
+    OUTPUT_Sigma = filename / "naca" / "NACA_Cylinder_Q.npy"
 
     r1 = min_sub
     r2 = min_sub
     s1 = int(((221 - 1) / r1) + 1)
     s2 = int(((51 - 1) / r2) + 1)
 
-    inputX = np.load(INPUT_X)
-    inputX = torch.tensor(inputX, dtype=torch.float)
-    inputY = np.load(INPUT_Y)
-    inputY = torch.tensor(inputY, dtype=torch.float)
-    # input = torch.stack([inputX, inputY], dim=-1)
+    # Keep the authors' fixed 1000/200 split while allowing a smaller prefix
+    # for integration tests. mmap avoids materializing the 1+ GB raw arrays.
+    train_size = 1000
+    test_start = train_size
+    inputX_raw = np.load(INPUT_X, mmap_mode="r")
+    inputY_raw = np.load(INPUT_Y, mmap_mode="r")
+    output_raw = np.load(OUTPUT_Sigma, mmap_mode="r")
+    if ntrain > train_size or test_start + ntest > inputX_raw.shape[0]:
+        raise ValueError("Requested samples exceed the official NACA split")
 
-    output = np.load(OUTPUT_Sigma)[:, 4]
-    output = torch.tensor(output, dtype=torch.float)
+    xmax = float(np.max(inputX_raw[:train_size]))
+    xmin = float(np.min(inputX_raw[:train_size]))
+    ymax = float(np.max(inputY_raw[:train_size]))
+    ymin = float(np.min(inputY_raw[:train_size]))
+    inputX_train = torch.from_numpy(
+        np.asarray(inputX_raw[:ntrain], dtype=np.float32).copy()
+    )
+    inputY_train = torch.from_numpy(
+        np.asarray(inputY_raw[:ntrain], dtype=np.float32).copy()
+    )
+    inputX_test = torch.from_numpy(
+        np.asarray(inputX_raw[test_start:test_start + ntest], dtype=np.float32).copy()
+    )
+    inputY_test = torch.from_numpy(
+        np.asarray(inputY_raw[test_start:test_start + ntest], dtype=np.float32).copy()
+    )
+    output_train = torch.from_numpy(
+        np.asarray(output_raw[:ntrain, 4], dtype=np.float32).copy()
+    )
+    output_test = torch.from_numpy(
+        np.asarray(output_raw[test_start:test_start + ntest, 4], dtype=np.float32).copy()
+    )
 
-    print('inputX', inputX.shape, inputX.mean())
-    print('inputY', inputY.shape, inputY.mean())
-    print('output_Sigma', output.shape, output.mean())
-    print('minsub', r1, r2, s1, s2)
-
-    # changed
-    #x_train = inputY[:ntrain, ::r1, ::r2][:, :s1, :s2]
-    #y_train = output[:ntrain, ::r1, ::r2][:, :s1, :s2]
-    #x_test = inputY[ntrain:ntrain+ntest, ::r1, ::r2][:, :s1, :s2] # changed
-    #y_test = output[ntrain:ntrain+ntest, ::r1, ::r2][:, :s1, :s2]
-
-    # new
-    xmax = torch.max(inputX[:ntrain])
-    xmin = torch.min(inputX[:ntrain])
-    inputX = (inputX - xmin) / (xmax - xmin)
-
-    ymax = torch.max(inputY[:ntrain])
-    ymin = torch.min(inputY[:ntrain])
-    inputY = (inputY - ymin) / (ymax - ymin)
-
-    print('xmax', xmax, 'xmin', xmin)
-    print('ymax', ymax, 'ymin', ymin)
-
-    x = torch.cat([inputX.unsqueeze(-1), inputY.unsqueeze(-1)], axis=-1)
-    x_train = x[:ntrain, ::r1, ::r2, :][:, :s1, :s2]
-    y_train = output[:ntrain, ::r1, ::r2][:, :s1, :s2]
-    x_test = x[ntrain:ntrain+ntest, ::r1, ::r2, :][:, :s1, :s2]
-    y_test = output[ntrain:ntrain+ntest, ::r1, ::r2][:, :s1, :s2]
-
-    print(x_train.shape, x_train.min(), x_train.max(), x_train.reshape(-1, 2).max(0), x_train.reshape(-1, 2).min(0))
+    inputX_train = (inputX_train - xmin) / (xmax - xmin)
+    inputY_train = (inputY_train - ymin) / (ymax - ymin)
+    inputX_test = (inputX_test - xmin) / (xmax - xmin)
+    inputY_test = (inputY_test - ymin) / (ymax - ymin)
+    x_train = torch.stack((inputX_train, inputY_train), dim=-1)
+    x_test = torch.stack((inputX_test, inputY_test), dim=-1)
+    x_train = x_train[:, ::r1, ::r2, :][:, :s1, :s2]
+    x_test = x_test[:, ::r1, ::r2, :][:, :s1, :s2]
+    y_train = output_train[:, ::r1, ::r2][:, :s1, :s2]
+    y_test = output_test[:, ::r1, ::r2][:, :s1, :s2]
 
     return x_train, y_train, x_test, y_test
 
 
 def get_elasticity(filename, ntrain, ntest, min_sub=1):
-    PATH_Sigma = os.path.join(
-        filename, "../elasticity/Random_UnitCell_sigma_10.npy")
-    PATH_XY = os.path.join(filename, "../elasticity/Random_UnitCell_XY_10.npy")
-    PATH_rr = os.path.join(filename, "../elasticity/Random_UnitCell_rr_10.npy")
-    PATH_theta = os.path.join(
-        filename, "../elasticity/Random_UnitCell_theta_10.npy")
+    filename = Path(filename)
+    path_sigma = filename / "Meshes" / "Random_UnitCell_sigma_10.npy"
+    path_xy = filename / "Meshes" / "Random_UnitCell_XY_10.npy"
+    input_s = np.load(path_sigma, mmap_mode="r")
+    input_xy = np.load(path_xy, mmap_mode="r")
+    train_size, test_size = 1000, 200
+    test_start = input_s.shape[1] - ntest
+    if ntrain > train_size or ntest > test_size:
+        raise ValueError("Requested samples exceed the official Elasticity split")
 
-    input_rr = np.load(PATH_rr)
-    input_rr = torch.tensor(input_rr, dtype=torch.float).permute(1, 0)
-    input_s = np.load(PATH_Sigma)
-    input_s = torch.tensor(
-        input_s, dtype=torch.float).permute(1, 0).unsqueeze(-1)
-    input_xy = np.load(PATH_XY)
-    input_xy = torch.tensor(input_xy, dtype=torch.float).permute(2, 0, 1)
-    input_theta = np.load(PATH_theta)
-    input_theta = torch.tensor(input_theta, dtype=torch.float).permute(1, 0)
-
-    train_rr = input_rr[:ntrain]
-    test_rr = input_rr[-ntest:]
-    train_s = input_s[:ntrain]
-    test_s = input_s[-ntest:]
-    train_xy = input_xy[:ntrain]
-    test_xy = input_xy[-ntest:]
-
-    sigma = train_s.std()
+    # Statistics use the complete official training partition, even in smoke mode.
+    sigma = float(np.asarray(input_s[:, :train_size], dtype=np.float32).std())
     mu = 0  # train_s.mean()
+
+    train_s = torch.from_numpy(
+        np.asarray(input_s[:, :ntrain], dtype=np.float32).T.copy()
+    ).unsqueeze(-1)
+    test_s = torch.from_numpy(
+        np.asarray(input_s[:, test_start:], dtype=np.float32).T.copy()
+    ).unsqueeze(-1)
+    train_xy = torch.from_numpy(
+        np.asarray(input_xy[:, :, :ntrain], dtype=np.float32).transpose(2, 0, 1).copy()
+    )
+    test_xy = torch.from_numpy(
+        np.asarray(
+            input_xy[:, :, test_start:], dtype=np.float32
+        ).transpose(2, 0, 1).copy()
+    )
 
     train_s = (train_s - mu) / sigma
     test_s = (test_s - mu) / sigma
@@ -835,40 +808,32 @@ def get_navier_stokes_fno(filename, ntrain=1000, ntest=200, sequence_length=None
     return u_train.unsqueeze(-2), u_test.unsqueeze(-2)
 
 
-def get_navier_stokes_dino(filename, seq_inter_len=20, seq_extra_len=20):
+def get_navier_stokes_dino(
+    filename,
+    seq_inter_len=20,
+    seq_extra_len=20,
+    ntrain=256,
+    ntest=16,
+):
     train_path = str(filename) + "/dino/navier_1e-3_256_2_train.shelve"
     test_path = str(filename) + "/dino/navier_1e-3_256_2_test.shelve"
 
-    data_train = dict(shelve.open(str(train_path)))
-    data_test = dict(shelve.open(str(test_path)))
-
-    # data_train.pop("a")
-    # data_train.pop("t")
-    # data_test.pop("a")
-    # data_test.pop("t")
-
-    # concatenate dictionaries to be of shape (ntrain, 40, 256, 256)
-    #  u = einops.rearrange(u, 'b (t d) w l -> (b d) t w l', d=2)
-    u_train = torch.tensor(
-        np.concatenate(
-            list(
-                map(
-                    lambda key: np.array(data_train[key]["data"]),
-                    data_train.keys(),
+    def read_split(path, requested, split):
+        with shelve.open(str(path), flag="r") as database:
+            # GNU dbm does not guarantee insertion-order iteration. DINo uses
+            # integer trajectory ids, so numeric sorting fixes sample order.
+            keys = sorted(database.keys(), key=int)
+            if requested > len(keys):
+                raise ValueError(
+                    f"Requested {requested} {split} trajectories, "
+                    f"but {path} contains {len(keys)}"
                 )
-            )
-        )
-    )
-    u_test = torch.tensor(
-        np.concatenate(
-            list(
-                map(
-                    lambda key: np.array(data_test[key]["data"]),
-                    data_test.keys(),
-                )
-            )
-        )
-    )
+            arrays = [np.asarray(database[key]["data"]) for key in keys[:requested]]
+        return torch.from_numpy(np.concatenate(arrays, axis=0)).float()
+
+    # Each shelve value has shape (1, 40, 64, 64).
+    u_train = read_split(train_path, ntrain, "train")
+    u_test = read_split(test_path, ntest, "test")
 
     # if sequence_length is not None:
     #     u_train = einops.rearrange(
@@ -902,41 +867,30 @@ def split_data(u_train, u_test, seq_inter_len, seq_extra_len, total_seq):
     return u_train, u_eval_extrapolation, u_test
 
 
-def get_shallow_water_dino(filename, seq_inter_len = 20, seq_extra_len = 20):
-    train_path = str(filename) + "/dino/shallow_water_16_160_128_256_train.h5"
-    test_path = str(filename) + "/dino/shallow_water_2_160_128_256_test.h5"
+def get_shallow_water_dino(filename, seq_inter_len=20, seq_extra_len=20, ntrain=None, ntest=None):
+    """Read only requested temporal windows; counts are windows, not HDF5 trajectories."""
+    window = seq_inter_len + seq_extra_len
+    def read(split, count):
+        name = "16_160_128_256_train" if split == "train" else "2_160_128_256_test"
+        path = Path(filename) / "dino" / f"shallow_water_{name}.h5"
+        with h5py.File(path, "r") as f:
+            total_seq = f["height"].shape[1]
+            windows = total_seq // window
+            available = f["height"].shape[0] * windows
+            count = available if count is None else int(count)
+            if windows < 1 or not 1 <= count <= available:
+                raise ValueError(f"SW {split} supports up to {available} windows")
+            trajectories = (count + windows - 1) // windows
+            height = torch.from_numpy(f["height"][:trajectories]).float() * 3000
+            vorticity = torch.from_numpy(f["vorticity"][:trajectories]).float() * 2
+        fields = torch.stack((height, vorticity), dim=-1)
+        fields = einops.rearrange(fields, 'b t long lat c -> b lat long c t')
+        fields = fields[..., total_seq % window:]
+        fields = einops.rearrange(fields, 'b ... (d t) -> (b d) ... t', t=window)
+        return fields[:count]
+    train, test = read("train", ntrain), read("test", ntest)
+    return train[..., :seq_inter_len], train, test
 
-    with h5py.File(train_path, "r") as f:
-        vorticity_train = f["vorticity"][()]
-        height_train = f["height"][()]
-
-    with h5py.File(test_path, "r") as f:
-        vorticity_test = f["vorticity"][()]
-        height_test = f["height"][()]
-
-    # shape (N, T, long, lat)
-    # train shape (16, 160, 256, 128)
-    # test shape (2, 160, 256, 128)
-
-    height_scale = 3 * 1e3
-    vorticity_scale = 2
-
-    vorticity_train = torch.from_numpy(
-        vorticity_train).float() * vorticity_scale
-    vorticity_test = torch.from_numpy(vorticity_test).float() * vorticity_scale
-
-    height_train = torch.from_numpy(height_train).float() * height_scale
-    height_test = torch.from_numpy(height_test).float() * height_scale
-
-    u_train = torch.cat([height_train.unsqueeze(-1),
-                        vorticity_train.unsqueeze(-1)], axis=-1)
-    u_test = torch.cat(
-        [height_test.unsqueeze(-1), vorticity_test.unsqueeze(-1)], axis=-1)
-
-    u_train = einops.rearrange(u_train, 'b t long lat c -> b lat long c t')
-    u_test = einops.rearrange(u_test, 'b t long lat c -> b lat long c t')
-    
-    return split_data(u_train, u_test, seq_inter_len, seq_extra_len, 160)
 
 class MatReader(object):
     """Loader for navier-stokes data"""

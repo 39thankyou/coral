@@ -1,0 +1,8 @@
+# Required by the author's step-0 Matplotlib logging through W&B.
+plotly==6.9.0
+# Modulation t-SNE visualizations (max_iter API introduced in 1.5).
+scikit-learn>=1.5,<2
+
+# Missing official SW downloads (optional for training already-downloaded data).
+gdown>=5,<6
+requests>=2

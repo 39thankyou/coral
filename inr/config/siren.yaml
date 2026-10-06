@@ -36,7 +36,7 @@ inr:
   latent_dim : 256
   depth : 6
   hidden_dim : 256
-  w0 : 30
+  w0 : 10
   use_latent: True
   modulate_scale: False
   modulate_shift: True

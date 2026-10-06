@@ -1,0 +1,228 @@
+# Thin-adaptor configuration. Model and optimizer defaults are loaded from the
+# author's YAML files; the mappings below reproduce the overrides in bash_static
+# and bash_dynamics. Smoke mode changes only sample counts and epoch counts.
+mode: author
+
+common:
+  seed: 123
+  smoke_ntrain: 8
+  smoke_ntest: 4
+  smoke_epochs: 5
+  visualization_steps: 5
+  output_root: run_adaptor/outputs
+
+# WandB logging settings. Preserve the existing logging project and account;
+# empty values fall back to the author base config or an auto-generated run
+# name. WANDB_ENTITY / WANDB_PROJECT env vars still take final precedence.
+wandb:
+  entity: "39thankyou-"
+  project: "latent_lib"
+  name:
+  id:
+  dir:
+  sweep_id:
+
+datasets:
+  airfoil:
+    author_name: airfoil
+    author_ntrain: 1000
+    author_ntest: 200
+    data_dir: datasets/airfoil
+    inr_entrypoint: static/design_inr.py
+    downstream_entrypoint: static/design_regression.py
+    inr_base_config: static/config/static/design.yaml
+    downstream_base_config: static/config/static/regression.yaml
+    inr_run_name: adaptor-airfoil-inr
+    downstream_run_name: adaptor-airfoil-regression
+    inr_overrides:
+      optim.epochs: 5000
+      optim.lr_inr: 0.0001
+      optim.meta_lr_code: 0.0001
+      inr_in.w0: 5
+      inr_out.w0: 15
+    downstream_overrides:
+      optim.epochs: 10000
+      data.seed: 200
+
+  elasticity:
+    author_name: elasticity
+    author_ntrain: 1000
+    author_ntest: 200
+    data_dir: datasets/elasticity
+    inr_entrypoint: static/design_inr.py
+    downstream_entrypoint: static/design_regression.py
+    inr_base_config: static/config/static/design.yaml
+    downstream_base_config: static/config/static/regression.yaml
+    inr_run_name: adaptor-elasticity-inr
+    downstream_run_name: adaptor-elasticity-regression
+    inr_overrides:
+      optim.batch_size: 64
+      optim.epochs: 5000
+      optim.lr_inr: 0.0001
+      optim.meta_lr_code: 0.0001
+      inr_in.w0: 10
+      inr_out.w0: 15
+    downstream_overrides:
+      optim.epochs: 10000
+
+  cylinder_flow:
+    author_name: cylinder-flow
+    author_ntrain: 1000
+    author_ntest: 100
+    data_dir: datasets/cylinder_flow
+    inr_entrypoint: static/static_inr.py
+    downstream_entrypoint: static/static_regression.py
+    inr_base_config: static/config/static/different_inr.yaml
+    downstream_base_config: static/config/static/regression.yaml
+    inr_run_name: adaptor-cylinder-flow-inr
+    downstream_run_name: adaptor-cylinder-flow-regression
+    inr_overrides:
+      optim.epochs: 2000
+      inr_in.w0: 20
+      inr_out.w0: 15
+      inr_in.latent_dim: 128
+      inr_out.latent_dim: 128
+      model.width: 64
+    downstream_overrides:
+      optim.epochs: 2001
+
+  navier_stokes:
+    author_name: navier-stokes-dino
+    author_ntrain: 256
+    author_ntest: 16
+    data_dir: datasets
+    inr_entrypoint: inr/inr.py
+    downstream_entrypoint: dynamics_modeling/train.py
+    inr_base_config: inr/config/siren.yaml
+    downstream_base_config: dynamics_modeling/config/ode.yaml
+    inr_run_name: adaptor-navier-stokes-inr
+    downstream_run_name: adaptor-navier-stokes-ode
+    inr_overrides:
+      data.same_grid: true
+      data.sub_from: 1
+      data.sub_tr: 0.2
+      data.sub_te: 0.2
+      data.seq_inter_len: 20
+      data.seq_extra_len: 20
+      optim.batch_size: 128
+      optim.lr_inr: 0.000005
+      optim.epochs: 10000
+      inr.model_type: siren
+      inr.latent_dim: 128
+      inr.depth: 4
+      inr.hidden_dim: 128
+      wandb.saved_checkpoint: false
+    downstream_overrides:
+      data.same_grid: true
+      data.sub_from: 1
+      data.sub_tr: 0.2
+      data.sub_te: 0.2
+      data.seq_inter_len: 20
+      data.seq_extra_len: 20
+      optim.batch_size: 64
+      optim.epochs: 10000
+      optim.lr: 0.001
+      optim.weight_decay: 0
+      optim.gamma_step: 0.75
+      dynamics.depth: 3
+      dynamics.width: 512
+      dynamics.teacher_forcing_init: 0.99
+      dynamics.teacher_forcing_decay: 0.99
+      dynamics.teacher_forcing_update: 10
+      inr.inner_steps: 3
+
+  pipe:
+    author_name: pipe
+    author_ntrain: 1000
+    author_ntest: 200
+    data_dir: datasets/pipe
+    inr_entrypoint: static/design_inr.py
+    downstream_entrypoint: static/design_regression.py
+    inr_base_config: static/config/static/design.yaml
+    downstream_base_config: static/config/static/regression.yaml
+    inr_run_name: adaptor-pipe-inr
+    downstream_run_name: adaptor-pipe-regression
+    inr_overrides:
+      optim.batch_size: 16
+      optim.epochs: 5000
+      inr_in.w0: 5
+      inr_out.w0: 10
+      inr_in.hidden_dim: 128
+      inr_out.hidden_dim: 128
+      inr_in.depth: 5
+      inr_out.depth: 5
+      optim.lr_inr: 5.0e-05
+      optim.meta_lr_code: 5.0e-05
+    downstream_overrides:
+      optim.epochs: 10000
+      model.width: 128
+      model.depth: 3
+  airfoil_flow:
+    author_name: airfoil-flow
+    author_ntrain: 1000
+    author_ntest: 100
+    data_dir: datasets/airfoil_flow
+    inr_entrypoint: static/static_inr.py
+    downstream_entrypoint: static/static_regression.py
+    inr_base_config: static/config/static/different_inr.yaml
+    downstream_base_config: static/config/static/regression.yaml
+    inr_run_name: adaptor-airfoil-flow-inr
+    downstream_run_name: adaptor-airfoil-flow-regression
+    inr_overrides:
+      optim.epochs: 5000
+      inr_in.w0: 5
+      inr_out.w0: 5
+      inr_in.latent_dim: 128
+      inr_out.latent_dim: 128
+      inr_in.hidden_dim: 256
+      inr_out.hidden_dim: 256
+      model.width: 256
+      optim.batch_size: 32
+      optim.meta_lr_code: 5.0e-06
+    downstream_overrides:
+      optim.epochs: 101
+  shallow_water:
+    author_name: shallow-water-dino
+    author_ntrain: 64
+    author_ntest: 8
+    data_dir: datasets
+    inr_entrypoint: inr/inr.py
+    downstream_entrypoint: dynamics_modeling/train.py
+    inr_base_config: inr/config/siren.yaml
+    downstream_base_config: dynamics_modeling/config/ode.yaml
+    inr_run_name: adaptor-shallow-water-inr
+    downstream_run_name: adaptor-shallow-water-ode
+    inr_overrides:
+      data.same_grid: false
+      data.sub_from: 2
+      data.sub_tr: 0.2
+      data.sub_te: 0.2
+      data.seq_inter_len: 20
+      data.seq_extra_len: 20
+      optim.batch_size: 16
+      optim.lr_inr: 5.0e-06
+      optim.epochs: 10000
+      inr.model_type: siren
+      inr.latent_dim: 256
+      inr.depth: 6
+      inr.hidden_dim: 256
+      inr.w0: 10
+      wandb.saved_checkpoint: false
+    downstream_overrides:
+      data.same_grid: false
+      data.sub_from: 2
+      data.sub_tr: 0.2
+      data.sub_te: 0.2
+      data.seq_inter_len: 20
+      data.seq_extra_len: 20
+      optim.batch_size: 64
+      optim.epochs: 10000
+      optim.lr: 0.001
+      optim.weight_decay: 0
+      optim.gamma_step: 0.75
+      dynamics.depth: 3
+      dynamics.width: 512
+      dynamics.teacher_forcing_init: 0.99
+      dynamics.teacher_forcing_decay: 0.99
+      dynamics.teacher_forcing_update: 10
+      inr.inner_steps: 3

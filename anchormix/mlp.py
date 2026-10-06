@@ -1,3 +1,4 @@
+# Independent copy of coral/mlp.py; processor behavior is unchanged.
 from functools import partial
 
 import torch

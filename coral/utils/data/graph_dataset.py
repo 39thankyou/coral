@@ -15,7 +15,10 @@ from torch_geometric.data import Dataset, Data
 from torch_geometric.loader import DataLoader
 import json
 import functools
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except ImportError:  # TensorFlow is optional for the lightweight TFRecord path.
+    tf = None
 from coral.mlp import MLP
 
 KEY_TO_INDEX = {
@@ -35,6 +38,8 @@ KEY_TO_STATS = {
 
 def _parse(proto, meta):
     """Parses a trajectory from tf.Example."""
+    if tf is None:
+        raise RuntimeError("TensorFlow is not installed")
     feature_lists = {k: tf.io.VarLenFeature(tf.string) for k in meta["field_names"]}
     features = tf.io.parse_single_example(proto, feature_lists)
     out = {}
@@ -57,10 +62,61 @@ def load_dataset(path, split):
     """Load dataset."""
     with open(os.path.join(path, "meta.json"), "r") as fp:
         meta = json.loads(fp.read())
-    ds = tf.data.TFRecordDataset(os.path.join(path, split + ".tfrecord"))
-    ds = ds.map(functools.partial(_parse, meta=meta), num_parallel_calls=8)
-    ds = ds.prefetch(1)
-    return ds
+    record_path = os.path.join(path, split + ".tfrecord")
+    if tf is not None:
+        ds = tf.data.TFRecordDataset(record_path)
+        ds = ds.map(functools.partial(_parse, meta=meta), num_parallel_calls=8)
+        return ds.prefetch(1)
+
+    try:
+        from tfrecord.reader import tfrecord_loader
+    except ImportError as exc:
+        raise RuntimeError(
+            "Reading MeshGraphNets data requires tensorflow or tfrecord"
+        ) from exc
+
+    def decoded_records():
+        for record in tfrecord_loader(record_path, None):
+            decoded = {}
+            for key, field in meta["features"].items():
+                array = np.frombuffer(record[key], dtype=np.dtype(field["dtype"]))
+                shape = list(field["shape"])
+                known = int(np.prod([size for size in shape if size != -1]))
+                shape = [array.size // known if size == -1 else size for size in shape]
+                array = array.reshape(shape)
+                if field["type"] == "static":
+                    array = np.tile(array, (meta["trajectory_length"], 1, 1))
+                decoded[key] = array
+            yield decoded
+
+    return decoded_records()
+
+
+def load_cylinder_data(path, split, n_samples=None):
+    """Read raw MeshGraphNets trajectories using the official split semantics.
+
+    The paper uses the first and last of the 600 frames. This helper intentionally
+    does not read or create ``static_*.h5`` caches.
+    """
+
+    inputs, outputs, coordinates = [], [], []
+    for index, data in enumerate(load_dataset(path, split)):
+        if n_samples is not None and index >= n_samples:
+            break
+
+        def as_numpy(value):
+            return value.numpy() if hasattr(value, "numpy") else np.asarray(value)
+
+        pos = as_numpy(data["mesh_pos"])[0]
+        velocity = as_numpy(data["velocity"])
+        pressure = as_numpy(data["pressure"])
+        inputs.append(np.concatenate((pressure[0], velocity[0]), axis=-1))
+        outputs.append(np.concatenate((pressure[-1], velocity[-1]), axis=-1))
+        coordinates.append(pos)
+
+    if n_samples is not None and len(inputs) != n_samples:
+        raise ValueError(f"Split {split!r} only yielded {len(inputs)} samples")
+    return inputs, outputs, coordinates
 
 
 class CylinderFlowDataset(Dataset):

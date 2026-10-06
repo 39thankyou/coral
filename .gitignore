@@ -152,6 +152,18 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Raw datasets (also covers a dataset directory provided as a symlink)
+/datasets
+
+# Generated experiment outputs, checkpoints and W&B logs
+/outputs/
+/checkpoints/
+/wandb/
+/run/outputs/
+/run_adaptor/outputs/
+/run_codelib/outputs/
+/run_codelib/outputs_*
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

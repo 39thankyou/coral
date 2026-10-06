@@ -1,0 +1,265 @@
+# Shared-INR experiments. Historical directory name retained; no Codelib retrieval.
+# Use --representation anchormix to replace only the output INR by default.
+mode: full
+representation: null
+representation_branch: out
+anchormix:
+  num_anchors: 32
+  anchor_init: fps
+  anchor_path: null
+  learnable_pos: false
+  pos_lr_scale: 1e-3
+  init_jitter: 0.0
+  pos_constraint: none
+  read_mode: knn
+  num_neighbors: 4
+  weight_mode: distance
+  kernel_sigma: 0.2
+  attention_power: 1.0
+  gate_hidden_dim: 64
+  fusion: anchor
+  fusion_gate_hidden_dim: 64
+  fusion_gate_init: 0.05
+  global_alpha_init: 0.1
+  learnable_global_alpha: true
+  query_chunk_size: 4096
+common:
+  output_root: run_codelib/outputs
+  wandb_mode: offline
+  smoke_ntrain: 8
+  smoke_ntest: 4
+  smoke_epochs: 5
+datasets:
+  airfoil:
+    data_dir: datasets/airfoil
+    ntrain: 1000
+    ntest: 200
+    pretrained_inr: null
+    inr_base_config: static/config/static/design_shared.yaml
+    regression_base_config: static/config/static/regression_shared.yaml
+    inr_run_name: airfoil-shared-inr
+    regression_run_name: airfoil-shared-regression
+    inr_overrides:
+      optim.epochs: 5000
+      optim.lr_inr: 0.0001
+      optim.meta_lr_code: 0.0001
+      inr_in.w0: 5
+      inr_out.w0: 15
+    regression_overrides:
+      optim.epochs: 10000
+      data.seed: 200
+  elasticity:
+    data_dir: datasets/elasticity
+    ntrain: 1000
+    ntest: 200
+    pretrained_inr: null
+    inr_base_config: static/config/static/design_shared.yaml
+    regression_base_config: static/config/static/regression_shared.yaml
+    inr_run_name: elasticity-shared-inr
+    regression_run_name: elasticity-shared-regression
+    inr_overrides:
+      optim.batch_size: 64
+      optim.epochs: 5000
+      optim.lr_inr: 0.0001
+      optim.meta_lr_code: 0.0001
+      inr_in.w0: 10
+      inr_out.w0: 15
+    regression_overrides:
+      optim.epochs: 10000
+  pipe:
+    family: static
+    author_name: pipe
+    data_dir: datasets/pipe
+    ntrain: 1000
+    ntest: 200
+    pretrained_inr: null
+    inr_base_config: static/config/static/design_shared.yaml
+    regression_base_config: static/config/static/regression_shared.yaml
+    inr_run_name: pipe-shared-inr
+    regression_run_name: pipe-shared-regression
+    inr_overrides:
+      optim.batch_size: 16
+      optim.epochs: 5000
+      inr_in.w0: 5
+      inr_out.w0: 10
+      inr_in.hidden_dim: 128
+      inr_out.hidden_dim: 128
+      inr_in.depth: 5
+      inr_out.depth: 5
+      optim.lr_inr: 5.0e-05
+      optim.meta_lr_code: 5.0e-05
+    regression_overrides:
+      optim.epochs: 10000
+      model.width: 128
+      model.depth: 3
+  cylinder_flow:
+    family: graph
+    author_name: cylinder-flow
+    data_dir: datasets/cylinder_flow
+    ntrain: 1000
+    ntest: 100
+    pretrained_inr: null
+    inr_base_config: static/config/static/design_shared.yaml
+    regression_base_config: static/config/static/regression_shared.yaml
+    inr_run_name: cylinder-flow-shared-inr
+    regression_run_name: cylinder-flow-shared-regression
+    inr_overrides:
+      optim.epochs: 2000
+      inr_in.w0: 20
+      inr_out.w0: 15
+      inr_in.latent_dim: 128
+      inr_out.latent_dim: 128
+      model.width: 64
+      inr_in.model_type: siren
+      inr_out.model_type: siren
+      inr_in.depth: 4
+      inr_in.hidden_dim: 256
+      inr_in.use_latent: true
+      inr_in.modulate_scale: false
+      inr_in.modulate_shift: true
+      inr_in.hypernet_depth: 1
+      inr_in.hypernet_width: 128
+      inr_in.last_activation: null
+      inr_in.loss_type: mse
+      inr_out.depth: 4
+      inr_out.hidden_dim: 256
+      inr_out.use_latent: true
+      inr_out.modulate_scale: false
+      inr_out.modulate_shift: true
+      inr_out.hypernet_depth: 1
+      inr_out.hypernet_width: 128
+      inr_out.last_activation: null
+      inr_out.loss_type: mse
+    regression_overrides:
+      optim.epochs: 2001
+  airfoil_flow:
+    family: graph
+    author_name: airfoil-flow
+    data_dir: datasets/airfoil_flow
+    ntrain: 1000
+    ntest: 100
+    pretrained_inr: null
+    inr_base_config: static/config/static/design_shared.yaml
+    regression_base_config: static/config/static/regression_shared.yaml
+    inr_run_name: airfoil-flow-shared-inr
+    regression_run_name: airfoil-flow-shared-regression
+    inr_overrides:
+      optim.epochs: 5000
+      inr_in.w0: 5
+      inr_out.w0: 5
+      inr_in.latent_dim: 128
+      inr_out.latent_dim: 128
+      inr_in.hidden_dim: 256
+      inr_out.hidden_dim: 256
+      model.width: 256
+      optim.batch_size: 32
+      optim.meta_lr_code: 5.0e-06
+      inr_in.model_type: siren
+      inr_out.model_type: siren
+      inr_in.depth: 4
+      inr_in.use_latent: true
+      inr_in.modulate_scale: false
+      inr_in.modulate_shift: true
+      inr_in.hypernet_depth: 1
+      inr_in.hypernet_width: 128
+      inr_in.last_activation: null
+      inr_in.loss_type: mse
+      inr_out.depth: 4
+      inr_out.use_latent: true
+      inr_out.modulate_scale: false
+      inr_out.modulate_shift: true
+      inr_out.hypernet_depth: 1
+      inr_out.hypernet_width: 128
+      inr_out.last_activation: null
+      inr_out.loss_type: mse
+    regression_overrides:
+      optim.epochs: 101
+  navier_stokes:
+    family: dynamics
+    author_name: navier-stokes-dino
+    data_dir: datasets
+    ntrain: 256
+    ntest: 16
+    pretrained_inr: null
+    inr_base_config: inr/config/siren.yaml
+    regression_base_config: dynamics_modeling/config/ode.yaml
+    inr_run_name: navier-stokes-shared-inr
+    regression_run_name: navier-stokes-shared-ode
+    inr_overrides:
+      data.same_grid: true
+      data.sub_from: 1
+      data.sub_tr: 0.2
+      data.sub_te: 0.2
+      data.seq_inter_len: 20
+      data.seq_extra_len: 20
+      optim.batch_size: 128
+      optim.lr_inr: 5.0e-06
+      optim.epochs: 10000
+      inr.model_type: siren
+      inr.latent_dim: 128
+      inr.depth: 4
+      inr.hidden_dim: 128
+      wandb.saved_checkpoint: false
+    regression_overrides:
+      data.same_grid: true
+      data.sub_from: 1
+      data.sub_tr: 0.2
+      data.sub_te: 0.2
+      data.seq_inter_len: 20
+      data.seq_extra_len: 20
+      optim.batch_size: 64
+      optim.epochs: 10000
+      optim.lr: 0.001
+      optim.weight_decay: 0
+      optim.gamma_step: 0.75
+      dynamics.depth: 3
+      dynamics.width: 512
+      dynamics.teacher_forcing_init: 0.99
+      dynamics.teacher_forcing_decay: 0.99
+      dynamics.teacher_forcing_update: 10
+      inr.inner_steps: 3
+  shallow_water:
+    family: dynamics
+    author_name: shallow-water-dino
+    data_dir: datasets
+    ntrain: 64
+    ntest: 8
+    pretrained_inr: null
+    inr_base_config: inr/config/siren.yaml
+    regression_base_config: dynamics_modeling/config/ode.yaml
+    inr_run_name: shallow-water-shared-inr
+    regression_run_name: shallow-water-shared-ode
+    inr_overrides:
+      data.same_grid: false
+      data.sub_from: 2
+      data.sub_tr: 0.2
+      data.sub_te: 0.2
+      data.seq_inter_len: 20
+      data.seq_extra_len: 20
+      optim.batch_size: 16
+      optim.lr_inr: 5.0e-06
+      optim.epochs: 10000
+      inr.model_type: siren
+      inr.latent_dim: 256
+      inr.depth: 6
+      inr.hidden_dim: 256
+      inr.w0: 10
+      wandb.saved_checkpoint: false
+    regression_overrides:
+      data.same_grid: false
+      data.sub_from: 2
+      data.sub_tr: 0.2
+      data.sub_te: 0.2
+      data.seq_inter_len: 20
+      data.seq_extra_len: 20
+      optim.batch_size: 64
+      optim.epochs: 10000
+      optim.lr: 0.001
+      optim.weight_decay: 0
+      optim.gamma_step: 0.75
+      dynamics.depth: 3
+      dynamics.width: 512
+      dynamics.teacher_forcing_init: 0.99
+      dynamics.teacher_forcing_decay: 0.99
+      dynamics.teacher_forcing_update: 10
+      inr.inner_steps: 3

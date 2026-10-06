@@ -166,7 +166,7 @@ def main(cfg: DictConfig) -> None:
         input_dim = 2
         output_dim = 3
         DatasetClass = CylinderFlowDataset
-    elif "airfoil-flow":
+    elif dataset_name == "airfoil-flow":
         DatasetClass = AirfoilFlowDataset
         input_dim = 2
         output_dim = 4
@@ -511,7 +511,7 @@ def main(cfg: DictConfig) -> None:
                         "sigma": std,
                         "sigma_u": std_u
                     },
-                    f"{RESULTS_DIR}/{run_name}.pt",
+                    f"{model_dir}/{run_name}.pt",
                 )
 
     return code_test_loss
